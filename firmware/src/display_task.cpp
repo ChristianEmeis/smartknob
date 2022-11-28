@@ -3,6 +3,9 @@
 #include "semaphore_guard.h"
 
 #include "font/roboto_light_60.h"
+#include "font/roboto_mono_medium.c"
+#include "blur.c"
+#include "music_state.h"
 
 static const uint8_t LEDC_CHANNEL_LCD_BACKLIGHT = 0;
 
@@ -15,10 +18,13 @@ static lv_color_t buf[DISP_BUF_SIZE];
 static lv_point_t points_left_bound[2] = {{0,0},{0,0}};
 static lv_point_t points_right_bound[2] = {{0,0},{0,0}};
 
-DisplayTask::DisplayTask(const uint8_t task_core) : Task{"Display", 4096, 1, task_core} {
+MusicState musicState = MusicState();
+
+DisplayTask::DisplayTask(const uint8_t task_core) : Task{"Display", 16384, 1, task_core} {
   knob_state_queue_ = xQueueCreate(1, sizeof(PB_SmartKnobState));
   assert(knob_state_queue_ != NULL);
-
+  musicState.artist = "TEST123";
+  musicState.title = "ABC";
   mutex_ = xSemaphoreCreateMutex();
   assert(mutex_ != NULL);
 }
@@ -80,6 +86,12 @@ void DisplayTask::run() {
     lv_obj_set_style_bg_grad_stop(screen,TFT_HEIGHT,0);
     lv_obj_set_style_bg_main_stop(screen,TFT_HEIGHT,0);       //Same value for gradient and main gives sharp line on Gradient
 
+    lv_obj_t *music_image;
+    LV_IMG_DECLARE(blur);
+    music_image = lv_img_create(screen);
+    lv_img_set_src(music_image, &blur);
+    lv_obj_set_size(music_image, 240, 240);
+    lv_obj_align(music_image, LV_ALIGN_CENTER, 0, 0);
 
     //Testing with gauge. Not really suitable after a short test. Maybe create own lvgl Widget that is more usable with the smartknob
     /**gauge = lv_gauge_create(screen,NULL);
@@ -159,7 +171,7 @@ void DisplayTask::run() {
     lv_obj_align(label_cur_pos,LV_ALIGN_CENTER,0,-VALUE_OFFSET);
     lv_label_set_text(label_cur_pos,"0");
     lv_obj_set_style_text_color(label_cur_pos,lv_color_white(),0);
-    lv_obj_set_style_text_font(label_cur_pos,&lv_font_montserrat_28,0);
+    lv_obj_set_style_text_font(label_cur_pos,&roboto_mono_medium,0);
 
     label_desc = lv_label_create(screen);
     //lv_obj_set_pos(label_desc,TFT_WIDTH/2,TFT_HEIGHT / 2 + DESCRIPTION_Y_OFFSET);
@@ -167,7 +179,7 @@ void DisplayTask::run() {
     lv_obj_align(label_desc,LV_ALIGN_CENTER,0,DESCRIPTION_Y_OFFSET);
     lv_label_set_text(label_desc,"");
     lv_obj_set_style_text_color(label_desc,lv_color_white(),0);
-    lv_obj_set_style_text_font(label_desc,&lv_font_montserrat_16,0);
+    lv_obj_set_style_text_font(label_desc,&roboto_mono_medium,0);
 
     
     PB_SmartKnobState state;
@@ -186,11 +198,13 @@ void DisplayTask::run() {
           lv_obj_set_style_bg_main_stop(screen,TFT_HEIGHT-height,0);       //Same value for gradient and main gives sharp line on Gradient
         }
 
-        lv_label_set_text_fmt(label_cur_pos,"%d" , state.current_position);
+        lv_label_set_text_fmt(label_cur_pos,"%d%%" ,state.current_position);
+        //lv_label_set_text(label_cur_pos, "tes");
         lv_obj_set_style_text_align(label_cur_pos,LV_ALIGN_CENTER,LV_PART_MAIN);
         lv_obj_align(label_cur_pos,LV_ALIGN_CENTER,0,-VALUE_OFFSET);
+
         
-        lv_label_set_text(label_desc,state.config.text);
+        lv_label_set_text(label_desc, musicState.title.c_str());
         lv_obj_set_style_text_align(label_desc,LV_ALIGN_CENTER,LV_PART_MAIN);
         lv_obj_align(label_desc,LV_ALIGN_CENTER,0,DESCRIPTION_Y_OFFSET);
 

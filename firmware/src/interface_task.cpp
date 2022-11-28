@@ -12,6 +12,7 @@
 
 #include "interface_task.h"
 #include "util.h"
+#include "blur.c"
 
 #define COUNT_OF(A) (sizeof(A) / sizeof(A[0]))
 
@@ -37,86 +38,96 @@ static PB_SmartKnobConfig configs[] = {
     // char text[51];
 
     {
-        0,
-        0,
-        10 * PI / 180,
-        0,
-        1,
-        1.1,
-        "Unbounded\nNo detents",
-    },
-    {
-        11,
-        0,
-        10 * PI / 180,
-        0,
-        1,
-        1.1,
-        "Bounded 0-10\nNo detents",
-    },
-    {
-        73,
-        0,
-        10 * PI / 180,
-        0,
-        1,
-        1.1,
-        "Multi-rev\nNo detents",
-    },
-    {
-        2,
-        0,
-        60 * PI / 180,
-        1,
-        1,
-        0.55, // Note the snap point is slightly past the midpoint (0.5); compare to normal detents which use a snap point *past* the next value (i.e. > 1)
-        "On/off\nStrong detent",
-    },
-    {
-        1,
-        0,
-        60 * PI / 180,
-        0.01,
-        0.6,
-        1.1,
-        "Return-to-center",
-    },
-    {
-        256,
-        127,
-        1 * PI / 180,
-        0,
-        1,
-        1.1,
-        "Fine values\nNo detents",
-    },
-    {
-        256,
-        127,
-        1 * PI / 180,
-        1,
-        1,
-        1.1,
-        "Fine values\nWith detents",
-    },
-    {
-        32,
-        0,
-        8.225806452 * PI / 180,
-        2,
-        1,
-        1.1,
-        "Coarse values\nStrong detents",
-    },
-    {
-        32,
-        0,
-        8.225806452 * PI / 180,
+        101,
+        50,
+        3.6*PI / 180,
         0.2,
         1,
         1.1,
-        "Coarse values\nWeak detents",
-    },
+        "Volume control"
+    }
+
+    //{
+    //    0,
+    //    0,
+    //    10 * PI / 180,
+    //    0,
+    //    1,
+    //    1.1,
+    //    "Unbounded\nNo detents",
+    //},
+    //{
+    //    11,
+    //    0,
+    //    10 * PI / 180,
+    //    0,
+    //    1,
+    //    1.1,
+    //    "Bounded 0-10\nNo detents",
+    //},
+    //{
+    //    73,
+    //    0,
+    //    10 * PI / 180,
+    //    0,
+    //    1,
+    //    1.1,
+    //    "Multi-rev\nNo detents",
+    //},
+    //{
+    //    2,
+    //    0,
+    //    60 * PI / 180,
+    //    1,
+    //    1,
+    //    0.55, // Note the snap point is slightly past the midpoint (0.5); compare to normal detents which use a snap point *past* the next value (i.e. > 1)
+    //    "On/off\nStrong detent",
+    //},
+    //{
+    //    1,
+    //    0,
+    //    60 * PI / 180,
+    //    0.01,
+    //    0.6,
+    //    1.1,
+    //    "Return-to-center",
+    //},
+    //{
+    //    256,
+    //    127,
+    //    1 * PI / 180,
+    //    0,
+    //    1,
+    //    1.1,
+    //    "Fine values\nNo detents",
+    //},
+    //{
+    //    256,
+    //    127,
+    //    1 * PI / 180,
+    //    1,
+    //    1,
+    //    1.1,
+    //    "Fine values\nWith detents",
+    //},
+    //{
+    //    32,
+    //    0,
+    //    8.225806452 * PI / 180,
+    //    2,
+    //    1,
+    //    1.1,
+    //    "Coarse values\nStrong detents",
+    //},
+    //{
+    //    32,
+    //    0,
+    //    8.225806452 * PI / 180,
+    //    0.2,
+    //    1,
+    //    1.1,
+    //    "Coarse values\nWeak detents",
+    //},
 };
 
 InterfaceTask::InterfaceTask(const uint8_t task_core, MotorTask& motor_task, DisplayTask* display_task) : 
@@ -139,6 +150,7 @@ InterfaceTask::InterfaceTask(const uint8_t task_core, MotorTask& motor_task, Dis
 
 void InterfaceTask::run() {
     stream_.begin();
+    //stream_.printf("Size of array: %d", (sizeof(blur_map) / sizeof(blur_map[0])));
     
     #if SK_LEDS
         FastLED.addLeds<SK6812, PIN_LED_DATA, GRB>(leds, NUM_LEDS);
@@ -217,6 +229,19 @@ void InterfaceTask::log(const char* msg) {
     xQueueSendToBack(log_queue_, &msg_str, 0);
 }
 
+void InterfaceTask::changeLed(uint8_t led_data[]){
+    #if SK_LEDS
+        int offset = 0;
+        for (uint8_t i = 0; i < NUM_LEDS; i++) {
+            leds[i].r = led_data[offset * 3];
+            leds[i].g = led_data[offset * 3 + 1];
+            leds[i].b = led_data[offset * 3 + 2];
+            offset++;
+        }
+        FastLED.show();
+    #endif
+}
+
 void InterfaceTask::changeConfig(bool next) {
     if (next) {
         current_config_ = (current_config_ + 1) % COUNT_OF(configs);
@@ -263,21 +288,30 @@ void InterfaceTask::updateHardware() {
             }
 
             // TODO: calibrate and track (long term moving average) zero point (lower); allow calibration of set point offset
-            const int32_t lower = 950000;
-            const int32_t upper = 1800000;
+            const int32_t lower = 700000;
+            const int32_t upper = 800000;
             // Ignore readings that are way out of expected bounds
             if (reading >= lower - (upper - lower) && reading < upper + (upper - lower)*2) {
                 long value = CLAMP(reading, lower, upper);
                 press_value_unit = 1. * (value - lower) / (upper - lower);
 
+                long pressed_time;
                 static bool pressed;
                 if (!pressed && press_value_unit > 0.75) {
                     motor_task_.playHaptic(true);
                     pressed = true;
-                    changeConfig(true);
+                    //changeConfig(true);
+                    pressed_time = millis();
+                    
                 } else if (pressed && press_value_unit < 0.25) {
                     motor_task_.playHaptic(false);
                     pressed = false;
+                    if(pressed > millis() - 1000){
+                        stream_.printf("mut_\n");
+                    }
+                    else{
+                        stream_.printf("pla_\n");
+                    }
                 }
             }
         } else {
