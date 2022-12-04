@@ -153,7 +153,7 @@ void InterfaceTask::run() {
     //stream_.printf("Size of array: %d", (sizeof(blur_map) / sizeof(blur_map[0])));
     
     #if SK_LEDS
-        FastLED.addLeds<SK6812, PIN_LED_DATA, GRB>(leds, NUM_LEDS);
+        //FastLED.addLeds<SK6812, PIN_LED_DATA, GRB>(leds, NUM_LEDS);
     #endif
 
     #if SK_ALS && PIN_SDA >= 0 && PIN_SCL >= 0
@@ -229,18 +229,6 @@ void InterfaceTask::log(const char* msg) {
     xQueueSendToBack(log_queue_, &msg_str, 0);
 }
 
-void InterfaceTask::changeLed(uint8_t led_data[]){
-    #if SK_LEDS
-        int offset = 0;
-        for (uint8_t i = 0; i < NUM_LEDS; i++) {
-            leds[i].r = led_data[offset * 3];
-            leds[i].g = led_data[offset * 3 + 1];
-            leds[i].b = led_data[offset * 3 + 2];
-            offset++;
-        }
-        FastLED.show();
-    #endif
-}
 
 void InterfaceTask::changeConfig(bool next) {
     if (next) {
@@ -270,8 +258,8 @@ void InterfaceTask::updateHardware() {
         lux_avg = lux * LUX_ALPHA + lux_avg * (1 - LUX_ALPHA);
         static uint32_t last_als;
         if (millis() - last_als > 1000) {
-            snprintf(buf_, sizeof(buf_), "millilux: %.2f", lux*1000);
-            log(buf_);
+            //snprintf(buf_, sizeof(buf_), "millilux: %.2f", lux*1000);
+            //log(buf_);
             last_als = millis();
         }
     #endif
@@ -282,8 +270,8 @@ void InterfaceTask::updateHardware() {
 
             static uint32_t last_reading_display;
             if (millis() - last_reading_display > 1000) {
-                snprintf(buf_, sizeof(buf_), "HX711 reading: %d", reading);
-                log(buf_);
+                //snprintf(buf_, sizeof(buf_), "HX711 reading: %d", reading);
+                //log(buf_);
                 last_reading_display = millis();
             }
 
@@ -317,12 +305,12 @@ void InterfaceTask::updateHardware() {
         } else {
             log("HX711 not found.");
 
-            #if SK_LEDS
-                for (uint8_t i = 0; i < NUM_LEDS; i++) {
-                    leds[i] = CRGB::Red;
-                }
-                FastLED.show();
-            #endif
+            //#if SK_LEDS
+            //    for (uint8_t i = 0; i < NUM_LEDS; i++) {
+            //        leds[i] = CRGB::Red;
+            //    }
+            //    FastLED.show();
+            //#endif
         }
     #endif
 
@@ -336,15 +324,15 @@ void InterfaceTask::updateHardware() {
         display_task_->setBrightness(brightness); // TODO: apply gamma correction
     #endif
 
-    #if SK_LEDS
-        for (uint8_t i = 0; i < NUM_LEDS; i++) {
-            leds[i].setHSV(200 * press_value_unit, 255, brightness >> 8);
-
-            // Gamma adjustment
-            leds[i].r = dim8_video(leds[i].r);
-            leds[i].g = dim8_video(leds[i].g);
-            leds[i].b = dim8_video(leds[i].b);
-        }
-        FastLED.show();
-    #endif
+    //#if SK_LEDS
+    //    for (uint8_t i = 0; i < NUM_LEDS; i++) {
+    //        leds[i].setHSV(200 * press_value_unit, 255, brightness >> 8);
+    //
+    //        // Gamma adjustment
+    //        leds[i].r = dim8_video(leds[i].r);
+    //        leds[i].g = dim8_video(leds[i].g);
+    //        leds[i].b = dim8_video(leds[i].b);
+    //    }
+    //    FastLED.show();
+    //#endif
 }
