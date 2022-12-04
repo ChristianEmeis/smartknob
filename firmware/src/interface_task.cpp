@@ -12,7 +12,6 @@
 
 #include "interface_task.h"
 #include "util.h"
-#include "blur.c"
 
 #define COUNT_OF(A) (sizeof(A) / sizeof(A[0]))
 
