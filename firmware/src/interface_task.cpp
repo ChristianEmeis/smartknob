@@ -15,9 +15,6 @@
 
 #define COUNT_OF(A) (sizeof(A) / sizeof(A[0]))
 
-#if SK_LEDS
-CRGB leds[NUM_LEDS];
-#endif
 
 #if SK_STRAIN
 HX711 scale;

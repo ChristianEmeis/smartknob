@@ -63,13 +63,12 @@ void SerialProtocolPlaintext::loop() {
             }
         }
         else if (b == 0x03){
-            //uint8_t buf[115200];
-            //if(stream_.available() > 0){
-            //    int length = stream_.readBytes(musicState.image, 115200);
-            //    if (length == 115200){
-            //        stream_.write("IMAGE RECIEVED");
-            //    }
-            //}
+            if(stream_.available() > 0){
+                int length = stream_.readBytes(musicState.image, 115200);
+                if (length == 115200){
+                    stream_.write("IMAGE RECIEVED");
+                }
+            }
         }
         else if (b == '!'){
             //stream_.write("Command detected\n");
