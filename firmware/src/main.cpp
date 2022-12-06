@@ -16,6 +16,7 @@ static MotorTask motor_task(1);
 InterfaceTask interface_task(0, motor_task, display_task_p);
 
 void setup() {
+  psramInit();
   #if SK_DISPLAY
   display_task.setLogger(&interface_task);
   display_task.begin();
@@ -33,6 +34,8 @@ void setup() {
 }
 
 void loop() {
+  //char buf[50];
+  //snprintf(buf, sizeof(buf), "  psram: %d", psramFound());
   // char buf[50];
   // static uint32_t last_stack_debug;
   // if (millis() - last_stack_debug > 1000) {
@@ -51,4 +54,5 @@ void loop() {
   //   interface_task.log(buf);
   //   last_stack_debug = millis();
   // }
+  vTaskDelay(5);
 }
