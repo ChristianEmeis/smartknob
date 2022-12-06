@@ -4,7 +4,7 @@
 
 #include "font/roboto_light_60.h"
 #include "font/roboto_mono_medium.c"
-#include "blur.c"
+//#include "blur.c"
 #include "music_state.h"
 
 static const uint8_t LEDC_CHANNEL_LCD_BACKLIGHT = 0;
@@ -86,10 +86,20 @@ void DisplayTask::run() {
     lv_obj_set_style_bg_grad_stop(screen,TFT_HEIGHT,0);
     lv_obj_set_style_bg_main_stop(screen,TFT_HEIGHT,0);       //Same value for gradient and main gives sharp line on Gradient
 
+
+    const lv_img_dsc_t image_final = {
+            {LV_IMG_CF_TRUE_COLOR,
+            0,
+            0,
+            240,
+            240},
+            7200 * LV_COLOR_SIZE,
+            musicState.image
+        };
+
     lv_obj_t *music_image;
-    LV_IMG_DECLARE(blur);
     music_image = lv_img_create(screen);
-    lv_img_set_src(music_image, &blur);
+    lv_img_set_src(music_image, &image_final);
     lv_obj_set_size(music_image, 240, 240);
     lv_obj_align(music_image, LV_ALIGN_CENTER, 0, 0);
 

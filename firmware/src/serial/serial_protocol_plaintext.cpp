@@ -3,9 +3,13 @@
 #include "serial_protocol_plaintext.h"
 #include "display_task.h"
 #include "interface_task.h"
+#include "led_handler.h"
 #include <string>
 #include <vector>
-//#include "music_state.h"
+#include "music_state.h"
+
+LedHandler ledHandler = LedHandler();
+
 
 void SerialProtocolPlaintext::handleState(const PB_SmartKnobState& state) {
     bool substantial_change = (latest_state_.current_position != state.current_position)
@@ -54,9 +58,18 @@ void SerialProtocolPlaintext::loop() {
             if(stream_.available() > 0){
                 int length = stream_.readBytes(buf, 24);
                 if (length == 24){
-                    //interface_task_.changeLed(buf);
+                    ledHandler.changeLed(buf);
                 }
             }
+        }
+        else if (b == 0x03){
+            //uint8_t buf[115200];
+            //if(stream_.available() > 0){
+            //    int length = stream_.readBytes(musicState.image, 115200);
+            //    if (length == 115200){
+            //        stream_.write("IMAGE RECIEVED");
+            //    }
+            //}
         }
         else if (b == '!'){
             //stream_.write("Command detected\n");
@@ -81,7 +94,7 @@ void SerialProtocolPlaintext::loop() {
                         buf[16] = '.';
                     }
                     //stream_.write(buf);
-                    musicState.title = buf;
+                    //musicState.title = buf;
                 }
             }
         }
@@ -90,5 +103,6 @@ void SerialProtocolPlaintext::loop() {
 
 void SerialProtocolPlaintext::init(DemoConfigChangeCallback cb) {
     demo_config_change_callback_ = cb;
+    ledHandler.run();
     stream_.println("SmartKnob starting!\n\nSerial mode: plaintext\nPress 'C' at any time to calibrate.\nPress <Space> to change haptic modes.");
 }

@@ -5,6 +5,7 @@
 #include "motor_task.h"
 #include "serial_protocol.h"
 #include "uart_stream.h"
+#include "led_handler.h"
 
 typedef std::function<void(void)> DemoConfigChangeCallback;
 
