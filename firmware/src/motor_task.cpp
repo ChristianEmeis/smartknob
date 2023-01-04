@@ -61,7 +61,9 @@ void MotorTask::run() {
     motor.controller = MotionControlType::torque;
     motor.voltage_limit = 5;
     motor.velocity_limit = 10000;
+    #if SENSOR_MT6701
     motor.linkSensor(&encoder);
+    #endif
 
     // Not actually using the velocity loop built into SimpleFOC; but I'm using those PID variables
     // to run PID for torque (and SimpleFOC studio supports updating them easily over serial for tuning)
@@ -73,7 +75,9 @@ void MotorTask::run() {
 
     motor.init();
 
+    #if SENSOR_MT6701
     encoder.update();
+    #endif
     delay(10);
 
     motor.pole_pairs = MOTOR_POLE_PAIRS;
@@ -153,6 +157,11 @@ void MotorTask::run() {
                     motor.move(0);
                     motor.loopFOC();
                     break;
+                }
+                case CommandType::SET_POSITION: {
+                    config.position = command.data.config.position;
+                    latest_config = config;
+                    log("Got new position");
                 }
             }
         }
@@ -234,6 +243,19 @@ void MotorTask::setConfig(const PB_SmartKnobConfig& config) {
     xQueueSend(queue_, &command, portMAX_DELAY);
 }
 
+void MotorTask::setValue(int value) {
+    Command command = {
+        .command_type = CommandType::SET_POSITION,
+        .data = {
+            .config = {
+                .position = value,
+            },
+        }
+    };
+
+    xQueueSend(queue_, &command, portMAX_DELAY); 
+}
+
 
 void MotorTask::playHaptic(bool press) {
     Command command = {
@@ -268,6 +290,7 @@ void MotorTask::publish(const PB_SmartKnobState& state) {
     }
 }
 
+#if SENSOR_MT6701
 void MotorTask::calibrate() {
     // SimpleFOC is supposed to be able to determine this automatically (if you omit params to initFOC), but
     // it seems to have a bug (or I've misconfigured it) that gets both the offset and direction very wrong!
@@ -440,6 +463,7 @@ void MotorTask::calibrate() {
     log(buf_);
     delay(2000);
 }
+#endif
 
 void MotorTask::checkSensorError() {
 #if SENSOR_TLV

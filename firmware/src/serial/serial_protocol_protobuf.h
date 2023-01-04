@@ -3,14 +3,19 @@
 #include <PacketSerial.h>
 
 #include "../proto_gen/smartknob.pb.h"
-
+#if SK_MOTOR
 #include "motor_task.h"
+#endif
 #include "serial_protocol.h"
 #include "uart_stream.h"
 
 class SerialProtocolProtobuf : public SerialProtocol {
     public:
+    #if SK_MOTOR
         SerialProtocolProtobuf(Stream& stream, MotorTask& motor_task);
+    #else
+        SerialProtocolProtobuf(Stream& stream);
+    #endif
         ~SerialProtocolProtobuf(){}
         void log(const char* msg) override;
         void loop() override;
@@ -18,7 +23,9 @@ class SerialProtocolProtobuf : public SerialProtocol {
     
     private:
         Stream& stream_;
+        #if SK_MOTOR
         MotorTask& motor_task_;
+        #endif
         
         PB_FromSmartKnob pb_tx_buffer_;
         PB_ToSmartknob pb_rx_buffer_;

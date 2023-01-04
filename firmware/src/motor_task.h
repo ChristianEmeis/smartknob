@@ -13,6 +13,7 @@ enum class CommandType {
     CALIBRATE,
     CONFIG,
     HAPTIC,
+    SET_POSITION
 };
 
 struct HapticData {
@@ -39,6 +40,7 @@ class MotorTask : public Task<MotorTask> {
         void setConfig(const PB_SmartKnobConfig& config);
         void playHaptic(bool press);
         void runCalibration();
+        void setValue(int value);
 
         void addListener(QueueHandle_t queue);
         void setLogger(Logger* logger);

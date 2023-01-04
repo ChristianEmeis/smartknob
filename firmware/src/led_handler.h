@@ -1,6 +1,6 @@
 #pragma once
 #include <Arduino.h>
-class LedHandler {
+class LedHandler{
     public:
         void run();
         void changeLed(uint8_t *led_data);

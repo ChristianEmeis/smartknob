@@ -51,6 +51,7 @@
         "cinttypes": "cpp",
         "utility": "cpp",
         "typeinfo": "cpp",
-        "efuse_reg.h": "c"
+        "efuse_reg.h": "c",
+        "string_view": "cpp"
     },
 }

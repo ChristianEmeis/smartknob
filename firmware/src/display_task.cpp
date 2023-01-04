@@ -5,7 +5,7 @@
 #include "font/roboto_light_60.h"
 #include "font/roboto_mono_medium.c"
 //#include "blur.c"
-#include "music_state.h"
+#include "config_state.h"
 
 static const uint8_t LEDC_CHANNEL_LCD_BACKLIGHT = 0;
 
@@ -18,13 +18,14 @@ static lv_color_t buf[DISP_BUF_SIZE];
 static lv_point_t points_left_bound[2] = {{0,0},{0,0}};
 static lv_point_t points_right_bound[2] = {{0,0},{0,0}};
 
-MusicState musicState = MusicState();
+ConfigState configState = ConfigState();
 
 DisplayTask::DisplayTask(const uint8_t task_core) : Task{"Display", 16384, 1, task_core} {
   knob_state_queue_ = xQueueCreate(1, sizeof(PB_SmartKnobState));
   assert(knob_state_queue_ != NULL);
-  musicState.artist = "TEST123";
-  musicState.title = "ABC";
+  configState.artist = "TEST123";
+  configState.title = "ABC";
+  configState.imageLoading = true;
   mutex_ = xSemaphoreCreateMutex();
   assert(mutex_ != NULL);
 }
@@ -49,6 +50,7 @@ void disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
 }
 
 void DisplayTask::run() {
+    configState.image = (uint8_t *) ps_malloc(115200);
     tft_.begin();
     tft_.invertDisplay(1);
     tft_.setRotation(0);
@@ -76,7 +78,7 @@ void DisplayTask::run() {
 
       
 
-        //Create lvgl objects
+      //Create lvgl objects
     screen = lv_scr_act();
     
     lv_obj_set_style_bg_color(screen,lv_color_hex(0x383838),0);       
@@ -94,12 +96,11 @@ void DisplayTask::run() {
             240,
             240},
             7200 * LV_COLOR_SIZE,
-            musicState.image
+            configState.image
         };
 
     lv_obj_t *music_image;
     music_image = lv_img_create(screen);
-    lv_img_set_src(music_image, &image_final);
     lv_obj_set_size(music_image, 240, 240);
     lv_obj_align(music_image, LV_ALIGN_CENTER, 0, 0);
 
@@ -189,7 +190,7 @@ void DisplayTask::run() {
     lv_obj_align(label_desc,LV_ALIGN_CENTER,0,DESCRIPTION_Y_OFFSET);
     lv_label_set_text(label_desc,"");
     lv_obj_set_style_text_color(label_desc,lv_color_white(),0);
-    lv_obj_set_style_text_font(label_desc,&roboto_mono_medium,0);
+    lv_obj_set_style_text_font(label_desc,&lv_font_montserrat_20,0);
 
     
     PB_SmartKnobState state;
@@ -208,13 +209,17 @@ void DisplayTask::run() {
           lv_obj_set_style_bg_main_stop(screen,TFT_HEIGHT-height,0);       //Same value for gradient and main gives sharp line on Gradient
         }
 
+        if (!configState.imageLoading) {
+          lv_img_set_src(music_image, &image_final);
+        }
+
         lv_label_set_text_fmt(label_cur_pos,"%d%%" ,state.current_position);
         //lv_label_set_text(label_cur_pos, "tes");
         lv_obj_set_style_text_align(label_cur_pos,LV_ALIGN_CENTER,LV_PART_MAIN);
         lv_obj_align(label_cur_pos,LV_ALIGN_CENTER,0,-VALUE_OFFSET);
 
         
-        lv_label_set_text(label_desc, musicState.title.c_str());
+        lv_label_set_text(label_desc, configState.title.c_str());
         lv_obj_set_style_text_align(label_desc,LV_ALIGN_CENTER,LV_PART_MAIN);
         lv_obj_align(label_desc,LV_ALIGN_CENTER,0,DESCRIPTION_Y_OFFSET);
 

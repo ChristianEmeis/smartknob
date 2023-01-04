@@ -15,6 +15,9 @@
 
 #define COUNT_OF(A) (sizeof(A) / sizeof(A[0]))
 
+#if SK_LEDS
+CRGB leds[NUM_LEDS];
+#endif
 
 #if SK_STRAIN
 HX711 scale;
@@ -25,13 +28,6 @@ Adafruit_VEML7700 veml = Adafruit_VEML7700();
 #endif
 
 static PB_SmartKnobConfig configs[] = {
-    // int32_t num_positions;
-    // int32_t position;
-    // float position_width_radians;
-    // float detent_strength_unit;
-    // float endstop_strength_unit;
-    // float snap_point;
-    // char text[51];
 
     {
         101,
@@ -42,97 +38,25 @@ static PB_SmartKnobConfig configs[] = {
         1.1,
         "Volume control"
     }
-
-    //{
-    //    0,
-    //    0,
-    //    10 * PI / 180,
-    //    0,
-    //    1,
-    //    1.1,
-    //    "Unbounded\nNo detents",
-    //},
-    //{
-    //    11,
-    //    0,
-    //    10 * PI / 180,
-    //    0,
-    //    1,
-    //    1.1,
-    //    "Bounded 0-10\nNo detents",
-    //},
-    //{
-    //    73,
-    //    0,
-    //    10 * PI / 180,
-    //    0,
-    //    1,
-    //    1.1,
-    //    "Multi-rev\nNo detents",
-    //},
-    //{
-    //    2,
-    //    0,
-    //    60 * PI / 180,
-    //    1,
-    //    1,
-    //    0.55, // Note the snap point is slightly past the midpoint (0.5); compare to normal detents which use a snap point *past* the next value (i.e. > 1)
-    //    "On/off\nStrong detent",
-    //},
-    //{
-    //    1,
-    //    0,
-    //    60 * PI / 180,
-    //    0.01,
-    //    0.6,
-    //    1.1,
-    //    "Return-to-center",
-    //},
-    //{
-    //    256,
-    //    127,
-    //    1 * PI / 180,
-    //    0,
-    //    1,
-    //    1.1,
-    //    "Fine values\nNo detents",
-    //},
-    //{
-    //    256,
-    //    127,
-    //    1 * PI / 180,
-    //    1,
-    //    1,
-    //    1.1,
-    //    "Fine values\nWith detents",
-    //},
-    //{
-    //    32,
-    //    0,
-    //    8.225806452 * PI / 180,
-    //    2,
-    //    1,
-    //    1.1,
-    //    "Coarse values\nStrong detents",
-    //},
-    //{
-    //    32,
-    //    0,
-    //    8.225806452 * PI / 180,
-    //    0.2,
-    //    1,
-    //    1.1,
-    //    "Coarse values\nWeak detents",
-    //},
 };
 
+#if SK_MOTOR
 InterfaceTask::InterfaceTask(const uint8_t task_core, MotorTask& motor_task, DisplayTask* display_task) : 
-        Task("Interface", 3000, 1, task_core),
+#else
+InterfaceTask::InterfaceTask(const uint8_t task_core, DisplayTask* display_task) :  
+#endif
+
+        Task("Interface", 10000, 1, task_core),
         stream_(),
+    #if SK_MOTOR
         motor_task_(motor_task),
-        display_task_(display_task),
         plaintext_protocol_(stream_, motor_task_),
-        proto_protocol_(stream_, motor_task_) {
+        proto_protocol_(stream_, motor_task_),
+    #else
+        plaintext_protocol_(stream_),
+        proto_protocol_(stream_),
+    #endif
+        display_task_(display_task) {
     #if SK_DISPLAY
         assert(display_task != nullptr);
     #endif
@@ -146,11 +70,7 @@ InterfaceTask::InterfaceTask(const uint8_t task_core, MotorTask& motor_task, Dis
 
 void InterfaceTask::run() {
     stream_.begin();
-    //stream_.printf("Size of array: %d", (sizeof(blur_map) / sizeof(blur_map[0])));
-    
-    #if SK_LEDS
-        //FastLED.addLeds<SK6812, PIN_LED_DATA, GRB>(leds, NUM_LEDS);
-    #endif
+
 
     #if SK_ALS && PIN_SDA >= 0 && PIN_SCL >= 0
         Wire.begin(PIN_SDA, PIN_SCL);
@@ -168,14 +88,15 @@ void InterfaceTask::run() {
             log("ALS sensor not found!");
         }
     #endif
-
-    motor_task_.setConfig(configs[0]);
-    motor_task_.addListener(knob_state_queue_);
+    #if SK_MOTOR
+        motor_task_.setConfig(configs[0]);
+        motor_task_.addListener(knob_state_queue_);
+    #endif
 
 
     // Start in legacy protocol mode
     plaintext_protocol_.init([this] () {
-        changeConfig(true);
+        //changeConfig(true);
     });
     SerialProtocol* current_protocol = &plaintext_protocol_;
 
@@ -240,7 +161,9 @@ void InterfaceTask::changeConfig(bool next) {
     char buf_[256];
     snprintf(buf_, sizeof(buf_), "Changing config to %d -- %s", current_config_, configs[current_config_].text);
     log(buf_);
-    motor_task_.setConfig(configs[current_config_]);
+    #if SK_MOTOR
+        motor_task_.setConfig(configs[current_config_]);
+    #endif
 }
 
 void InterfaceTask::updateHardware() {
@@ -272,7 +195,7 @@ void InterfaceTask::updateHardware() {
             }
 
             // TODO: calibrate and track (long term moving average) zero point (lower); allow calibration of set point offset
-            const int32_t lower = 700000;
+            const int32_t lower = 480000;
             const int32_t upper = 800000;
             // Ignore readings that are way out of expected bounds
             if (reading >= lower - (upper - lower) && reading < upper + (upper - lower)*2) {
@@ -282,19 +205,27 @@ void InterfaceTask::updateHardware() {
                 long pressed_time;
                 static bool pressed;
                 if (!pressed && press_value_unit > 0.75) {
-                    motor_task_.playHaptic(true);
+                    #if SK_MOTOR
+                        motor_task_.playHaptic(true);
+                    #endif
                     pressed = true;
                     //changeConfig(true);
                     pressed_time = millis();
                     
                 } else if (pressed && press_value_unit < 0.25) {
-                    motor_task_.playHaptic(false);
+                    #if SK_MOTOR
+                        motor_task_.playHaptic(false);
+                    #endif
+
                     pressed = false;
                     if(pressed > millis() - 1000){
                         stream_.printf("mut_\n");
                     }
                     else{
-                        stream_.printf("pla_\n");
+                        byte msg[2];
+                        msg[0] = 0x03;
+                        msg[1] = 0x0A;
+                        stream_.write(msg, 2);
                     }
                 }
             }
@@ -320,15 +251,8 @@ void InterfaceTask::updateHardware() {
         display_task_->setBrightness(brightness); // TODO: apply gamma correction
     #endif
 
-    //#if SK_LEDS
-    //    for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    //        leds[i].setHSV(200 * press_value_unit, 255, brightness >> 8);
-    //
-    //        // Gamma adjustment
-    //        leds[i].r = dim8_video(leds[i].r);
-    //        leds[i].g = dim8_video(leds[i].g);
-    //        leds[i].b = dim8_video(leds[i].b);
-    //    }
-    //    FastLED.show();
-    //#endif
+    #if SK_LEDS
+        FastLED.setBrightness(brightness >> 8);
+        FastLED.show();
+    #endif
 }

@@ -9,11 +9,11 @@
 #include "logger.h"
 #include "proto_gen/smartknob.pb.h"
 #include "task.h"
-#include "music_state.h"
+#include "config_state.h"
 
 #define DISP_BUF_SIZE  (TFT_WIDTH * 10)
 
-extern MusicState musicState;
+extern ConfigState configState;
 
 class DisplayTask : public Task<DisplayTask> {
     friend class Task<DisplayTask>; // Allow base Task to invoke protected run()

@@ -5,7 +5,9 @@
 
 #include "display_task.h"
 #include "logger.h"
-#include "motor_task.h"
+#if SK_MOTOR
+    #include "motor_task.h"
+#endif
 #include "serial/serial_protocol_plaintext.h"
 #include "serial/serial_protocol_protobuf.h"
 #include "serial/uart_stream.h"
@@ -15,7 +17,11 @@ class InterfaceTask : public Task<InterfaceTask>, public Logger {
     friend class Task<InterfaceTask>; // Allow base Task to invoke protected run()
 
     public:
+    #if SK_MOTOR
         InterfaceTask(const uint8_t task_core, MotorTask& motor_task, DisplayTask* display_task);
+    #else
+        InterfaceTask(const uint8_t task_core, DisplayTask* display_task);
+    #endif
         void changeLed(uint8_t led_data[]);
         virtual ~InterfaceTask() {};
 
@@ -26,7 +32,9 @@ class InterfaceTask : public Task<InterfaceTask>, public Logger {
 
     private:
         UartStream stream_;
+    #if SK_MOTOR
         MotorTask& motor_task_;
+    #endif
         DisplayTask* display_task_;
         char buf_[64];
 

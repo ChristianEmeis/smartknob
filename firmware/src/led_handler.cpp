@@ -29,15 +29,16 @@ void LedHandler::changeLed(uint8_t *led_data){
             led_data_store[i+2].setRGB(led_data[3*offset], led_data[3*offset+1], led_data[3*offset+2]);
             offset++;
         }
-        FastLED.setBrightness(100);
-        FastLED.setCorrection(CRGB( 255, 90, 180));
+        //FastLED.setBrightness(100);
+        FastLED.setCorrection(CRGB( 255, 120, 190));
         FastLED.show();
-        FastLED.setBrightness(100);
+        //FastLED.setBrightness(100);
     #endif
 }
 
 void LedHandler::changeBrightness(uint8_t brightness){
     #if SK_LEDS
         FastLED.setBrightness(brightness);
+        FastLED.show();
     #endif
 }
