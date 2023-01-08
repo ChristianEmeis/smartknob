@@ -11,6 +11,8 @@
 
 LedHandler ledHandler = LedHandler();
 
+static bool LAST_VLM_CHANGE_BY_PC = false;
+
 
 void SerialProtocolPlaintext::handleState(const PB_SmartKnobState& state) {
     bool substantial_change = (latest_state_.current_position != state.current_position)
@@ -20,14 +22,14 @@ void SerialProtocolPlaintext::handleState(const PB_SmartKnobState& state) {
     latest_state_ = state;
 
     if (substantial_change) {
-        //stream_.printf("STATE: %d/%d  (detent strength: %0.2f, width: %0.0f deg, endstop strength: %0.2f)\n", state.current_position, state.config.num_positions - 1, state.config.detent_strength_unit, degrees(state.config.position_width_radians), state.config.endstop_strength_unit);
-        //stream_.printf("!vlm_%c\n", state.current_position);
-        byte msg[3];
-        msg[0] = 0x01;
-        msg[1] = state.current_position;
-        //msg[2] = 0x0A;
-        stream_.write(msg, 2);
-        //stream_.printf("!vlm_\n");
+        //vlm
+        if(!LAST_VLM_CHANGE_BY_PC){
+            byte msg[3];
+            msg[0] = 0x01;
+            msg[1] = state.current_position;
+            stream_.write(msg, 2);
+        }
+        LAST_VLM_CHANGE_BY_PC = false;
     }
 }
 
@@ -67,7 +69,11 @@ void SerialProtocolPlaintext::loop() {
         else if (b == 0x03){
             uint8_t buf[288];
             configState.imageLoading = true;
+            esp_task_wdt_reset();
+            vTaskDelay(1);
             for(int count = 0; count < 115200; count = count + 288){
+                esp_task_wdt_reset();
+                vTaskDelay(1);
                 if(stream_.available() > 0){
                     int length = stream_.readBytes(buf, 288);
                     if (length == 288){
@@ -135,7 +141,8 @@ void SerialProtocolPlaintext::loop() {
                 char buf[0];
                 stream_.readBytes(buf, 1);
                 motor_task_.setValue((int)buf[0]);
-                stream_.write(buf[0]);
+                LAST_VLM_CHANGE_BY_PC = true;
+                //stream_.write(buf[0]);
             }
         }
     }
